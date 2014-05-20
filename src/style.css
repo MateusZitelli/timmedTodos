@@ -10,11 +10,12 @@ body{
 }
 
 h1{
-  color:#8fe78c;
+  background-color: #46C6E5;
+  margin: 0px;
+  padding-top: 0.6em;
+  padding-bottom: 0.6em;
 }
 
-hr{
-}
 
 input{
   position:relative;
@@ -31,6 +32,14 @@ input{
 input.button{
   font-style: normal;
   font-size: 1.1em;
+  background-color: #55CF57;
+  color:#eee;
+  transition: all 0.2s ease-in;
+}
+
+input.button:hover{
+  text-shadow: 1px 1px 1px rgba(0,0,0,0.1);
+  box-shadow: 2px 2px 2px rgba(0,0,0, 0.2);
 }
 
 button{
@@ -38,38 +47,60 @@ button{
   border-radius: 1px;
   border: none;
   margin: 1px;
+  color:#fff;
+  transition: all 0.2s ease-in;
 }
 
 button:hover{
-  text-shadow: 2px 2px 2px rgba(0,0,0,0.5);
+  text-shadow: 1px 1px 1px rgba(0,0,0,0.1);
+  box-shadow: 2px 2px 2px rgba(0,0,0, 0.2);
 }
 
 .button-play{
-  background-color: #8fe78c;
+  background-color: #55CF57;
 }
 
 .button-pause{
-  background-color: #eb9090;
+  background-color: #FEC376;
 }
 
 .button-delete{
-  background-color: #eb5858;
+  background-color: #E5334F;
 }
 
 .todo.ended{
-  border: 2px solid #eb5858;
+  border: 2px solid #8149FC;
   padding: 2px;
 }
 
 .todoBox{
   position:absolute;
   width:500px;
+  height: auto;
+  margin-top: 100px;
   margin-left:-250px;
   left: 50%;
   background-color: #3d3d3d;
-  text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
 }
 
 .todo.ended > button.button-play{
-  background-color: #59b7ed;
+  background-color: #46C6E5;
+}
+
+.list-enter {
+  opacity: 0.01;
+  transition: opacity .5s ease-in;
+}
+
+.list-enter.list-enter-active {
+  opacity: 1;
+}
+
+.list-leave {
+  opacity: 1;
+  transition: opacity .5s ease-in;
+}
+
+.list-leave.list-leave-active {
+  opacity: 0.01;
 }

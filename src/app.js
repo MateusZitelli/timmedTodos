@@ -2,9 +2,12 @@
 * @jsx React.DOM
 */
 
-var todos = [
-  // {name: "Programar", duration:5},
-  // {name: "Fazer funfar", duration:90}
+if(!localStorage.todos) {
+  localStorage['todos'] = JSON.stringify([]);
+}
+
+var fixtureds_todos = [
+  //{name:'teste', duration:1}
 ];
 
 function playSound(filename){
@@ -13,32 +16,65 @@ function playSound(filename){
     .innerHTML='<audio autoplay="autoplay"><source src="' + filename + '.mp3" type="audio/mpeg" /><source src="' + filename + '.ogg" type="audio/ogg" /><embed hidden="true" autostart="true" loop="false" src="' + filename +'.mp3" /></audio>';
 }
 
+function saveStateLocalStorage(state){
+  localStorage.todos = JSON.stringify(state);
+}
+
+function loadStateLoadStorage(){
+  return JSON.parse(localStorage['todos']);
+}
+
+function getCurrentTimeStamp(){
+  return Math.round(new Date().getTime() / 1000.0);
+}
+
+function timeStampToString(stamp) {
+  var hours = Math.floor(stamp / 3600);
+  var minutes = Math.floor(stamp % 3600 / 60);
+  var secounds = (stamp % 60).toString();
+  hours = make2Digits(hours);
+  minutes = make2Digits(minutes);
+  secounds = make2Digits(secounds);
+  return hours + ":" + minutes + ":" + secounds;
+}
+
+function make2Digits(val){
+  val = val.toString();
+  return (val.length <= 1? '0': '') + val;
+}
+
+
+var ReactCSSTransitionGroup = React.addons.CSSTransitionGroup;
+
 var Todo = React.createClass({
-  render: function() {
-    function make2Digits(val){
-      val = val.toString();
-      return (val.length <= 1? '0': '') + val;
+  getRemainingTime: function(){
+    var todo = this.props.todo;
+    if(todo.paused){
+      return todo.remainingTime;
+    }else{
+      return todo.duration - (this.props.now - todo.start);
     }
+  },
+  componentDidUpdate: function(){
+    var todo = this.props.todo;
+    if(this.getRemainingTime() === 0 && !todo.ended){
+      console.log("Oi");
+      this.props.finish();
+    }
+  },
+  render: function() {
+    var todo = this.props.todo;
+    var remainingTime;
+    var todoClassName = 'todo ' + (todo.ended ? 'ended' : '')
+    var buttonClassName = "button-" + (todo.paused ? 'play': 'pause');
+    var buttonText = todo.paused ? 'Play': 'Pause';
+    buttonText = todo.ended ? 'Parar Alarme' : buttonText;
 
-    function timeStampToString(stamp) {
-      var hours = Math.floor(stamp / 3600);
-      var minutes = Math.floor(stamp % 3600 / 60);
-      var secounds = (stamp % 60).toString();
-      hours = make2Digits(hours);
-      minutes = make2Digits(minutes);
-      secounds = make2Digits(secounds);
-      return hours + ":" + minutes + ":" + secounds;
-    };
-
-    var todoClassName = 'todo ' + (this.props.todo.ended ? 'ended' : '')
-    var buttonClassName = "button-" + (this.props.todo.paused ? 'play': 'pause');
-    var remainingTime = timeStampToString(this.props.todo.remainingTime);
-    var buttonText = this.props.todo.paused ? 'Play': 'Pause';
-    buttonText = this.props.todo.ended ? 'Parar Alarme' : buttonText;
+    remainingTime = timeStampToString(this.getRemainingTime());
 
     return(
       <div className={todoClassName}>
-        <h2>{this.props.todo.name}</h2>
+        <h2>{todo.name}</h2>
         <p>{remainingTime}</p>
         <button
           className={buttonClassName}
@@ -57,30 +93,46 @@ var Todo = React.createClass({
 
 var TodoList = React.createClass({
   getInitialState: function(){
+    var _this = this;
     var todos = this.props.todos || [];
+    var state = {};
+    var previewsState = loadStateLoadStorage();
     todos = todos.map(function(todo, i){
       todo.remainingTime = todo.duration;
       todo.paused = true;
+      todo.start = null;
       todo.ended = false;
+      return todo;
     });
-    return {todos: this.props.todos};
+    state['todos'] = todos;
+    for(var key in previewsState){
+      if(state[key]){
+        state[key] = state[key].concat(previewsState[key]);
+      }else{
+        state[key] = previewsState[key];
+      }
+    }
+    this.interval = setInterval(function(){
+      _this.setState({now: _this.state.now + 1});
+    }, 1000);
+    state['now'] = getCurrentTimeStamp();
+    return state;
   },
   createTodo: function(todo) {
     var todos = this.state.todos;
     todos.push(todo);
     this.setState({todos: todos});
+    saveStateLocalStorage(this.state);
   },
   removeTodo: function(todoIndex) {
     var todos = this.state.todos;
     var todo = this.refs['todo'+todoIndex];
-    if(todo.interval){
-      clearInterval(todo.interval);
-    }
     if(todo.alarm){
       clearInterval(todo.alarm);
     }
     todos.splice(todoIndex, 1);
     this.setState({todos: todos});
+    saveStateLocalStorage(this.state);
   },
   moveTodo: function(todoIndex, to){
     var todosState = this.state.todos;
@@ -91,6 +143,7 @@ var TodoList = React.createClass({
       todos.push(todo);
     }
     this.setState({todos: todosState});
+    saveStateLocalStorage(this.state);
   },
   pauseAllTodos: function(){
     for(var i=0;i < this.props.todos.length; i++) {
@@ -100,41 +153,35 @@ var TodoList = React.createClass({
   pauseTodo: function(todoIndex){
     var todosState = this.state.todos;
     if(todosState[todoIndex].paused) return;
-    var todo = this.refs['todo'+todoIndex];
 
-    clearInterval(todo.interval);
-    todo.interval = null;
     todosState[todoIndex].paused = true;
+    todosState[todoIndex].remainingTime = todosState[todoIndex].duration - (this.state.now - todosState[todoIndex].start);
     this.setState({todos: todosState});
+    saveStateLocalStorage(this.state);
   },
   finish: function(todoIndex){
     var todosState = this.state.todos;
+    todosState[todoIndex].ended = true;
+    this.setState({todos: todosState});
     var todo = this.refs['todo'+todoIndex];
     this.pauseTodo(todoIndex);
     todosState[todoIndex].remainingTime = todosState[todoIndex].duration;
-    todosState[todoIndex].ended = true;
-    clearInterval(todo.interval);
     todo.alarm = setInterval(playSound.bind(this, 'assets/notification'), 1000);
-    this.setState({todos: todosState});
-  },
-  tick: function(todoIndex){
-    var todosState = this.state.todos;
-    var remainingTime = todosState[todoIndex].remainingTime;
-    todosState[todoIndex].remainingTime = remainingTime - 1;
-    this.setState({todosState: todosState});
-    if(remainingTime - 1 === 0) {
-      this.finish(todoIndex);
-    }
+    saveStateLocalStorage(this.state);
   },
   resumeTodo: function(todoIndex){
     var todosState = this.state.todos;
     if(!todosState[todoIndex].paused) return;
-    var todo = this.refs['todo'+todoIndex];
 
     this.pauseAllTodos();
-    todo.interval = setInterval(this.tick.bind(this, todoIndex), 1000);
+    if(todosState[todoIndex].remainingTime == null){
+      todosState[todoIndex].start = this.state.now;
+    }else{
+      todosState[todoIndex].start = this.state.now - todosState[todoIndex].duration + todosState[todoIndex].remainingTime;
+    }
     todosState[todoIndex].paused = false;
     this.setState({todos: todosState});
+    saveStateLocalStorage(this.state);
   },
   playPauseTodo: function(todoIndex){
     var todosState = this.state.todos;
@@ -142,8 +189,8 @@ var TodoList = React.createClass({
       var todo = this.refs['todo'+todoIndex];
       todosState[todoIndex].ended = false;
       this.setState({todo: todosState});
+      saveStateLocalStorage(this.state);
       clearInterval(todo.alarm);
-      this.moveTodo(todoIndex, 'bottom');
     }else if(todosState[todoIndex].paused){
       this.resumeTodo(todoIndex);
     }else{
@@ -152,24 +199,29 @@ var TodoList = React.createClass({
   },
   render: function() {
     var _this = this;
-    this.todos = this.state.todos.map(function(todo, i){
+    todos = this.state.todos.map(function(todo, i){
       return(
         <Todo
           ref={'todo'+i}
           key={'todo'+i}
           todo={todo}
+          now={_this.state.now}
           deleteTodo={_this.removeTodo.bind(null, i)}
           moveTo={_this.moveTodo.bind(null, i)}
           pauseAllTodos={_this.pauseAllTodos}
           playPauseTodo={_this.playPauseTodo.bind(null, i)}
-          duration={todo.duration}/>
+          finish={_this.finish.bind(null, i)}/>
       );
     });
 
     return(
-      <div className="todoList">
-        {this.todos}
-      </div>
+      <ReactCSSTransitionGroup
+        component={React.DOM.div}
+        transitionName="list"
+        transitionLeave={false}
+        className="todoList">
+          {todos}
+      </ReactCSSTransitionGroup>
     );
   }
 });
@@ -187,7 +239,8 @@ var TodoForm = React.createClass({
       remainingTime: timeInSecounds,
       duration: timeInSecounds,
       paused:true,
-      ended:false
+      ended:false,
+      start:null
     };
     this.refs.name.getDOMNode().value = '';
     this.refs.timepicker.getDOMNode().value = '';
@@ -197,7 +250,7 @@ var TodoForm = React.createClass({
     $(this.refs.timepicker.getDOMNode()).clockpicker({
       donetext: "Pronto",
       default: "0:50",
-      align: 'left',
+      align: 'right',
       placement: 'bottom'
     });
   },
@@ -219,7 +272,7 @@ var TodoBox = React.createClass({
   render: function() {
     return(
       <div className="todoBox">
-        <h1>TODOs</h1><hr/>
+        <h1>TO DOs</h1>
         <TodoList
           ref="todoList"
           todos={this.props.todos}/>
@@ -229,7 +282,12 @@ var TodoBox = React.createClass({
   }
 });
 
-React.renderComponent(
-  <TodoBox todos={todos}/>,
-  document.getElementById('content')
-);
+function loadComponent(){
+  React.renderComponent(
+    <TodoBox todos={fixtureds_todos}/>,
+    document.getElementById('content')
+  );
+  $('#content').animate({'opacity':1}, 1000);
+}
+
+loadComponent();
