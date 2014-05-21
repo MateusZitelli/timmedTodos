@@ -58,7 +58,6 @@ var Todo = React.createClass({
   componentDidUpdate: function(){
     var todo = this.props.todo;
     if(this.getRemainingTime() === 0 && !todo.ended){
-      console.log("Oi");
       this.props.finish();
     }
   },
@@ -145,11 +144,6 @@ var TodoList = React.createClass({
     this.setState({todos: todosState});
     saveStateLocalStorage(this.state);
   },
-  pauseAllTodos: function(){
-    for(var i=0;i < this.props.todos.length; i++) {
-      this.pauseTodo(i);
-    }
-  },
   pauseTodo: function(todoIndex){
     var todosState = this.state.todos;
     if(todosState[todoIndex].paused) return;
@@ -173,7 +167,6 @@ var TodoList = React.createClass({
     var todosState = this.state.todos;
     if(!todosState[todoIndex].paused) return;
 
-    this.pauseAllTodos();
     if(todosState[todoIndex].remainingTime == null){
       todosState[todoIndex].start = this.state.now;
     }else{
@@ -208,7 +201,6 @@ var TodoList = React.createClass({
           now={_this.state.now}
           deleteTodo={_this.removeTodo.bind(null, i)}
           moveTo={_this.moveTodo.bind(null, i)}
-          pauseAllTodos={_this.pauseAllTodos}
           playPauseTodo={_this.playPauseTodo.bind(null, i)}
           finish={_this.finish.bind(null, i)}/>
       );
